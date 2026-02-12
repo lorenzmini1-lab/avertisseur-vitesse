@@ -1,6 +1,6 @@
 {
   "appId": "com.lorenzmi.vitesse",
-  "appName": "Avertisseur Vitesse",
+  "appName": "Mon Alerte",
   "webDir": "www",
   "bundledWebRuntime": false
 }
