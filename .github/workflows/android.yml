@@ -19,19 +19,18 @@ jobs:
 
       - name: Initialize Capacitor Android
         run: |
-          # On ajoute la plateforme et on synchronise
-          npx cap add android || echo "Déjà présent"
+          npx cap add android || echo "Ok"
           npx cap sync android
 
-      - name: Generate Icons & Force Assets
+      - name: Force Icon Overwrite
         run: |
           if [ -f "icon.png" ]; then
-            # On crée un splash à partir de l'icône
-            cp icon.png splash.png
-            # On génère toutes les tailles d'icônes Android
+            # On génère les images
             npx @capacitor/assets generate --android
-            # On s'assure que Capacitor prend bien les nouvelles ressources
-            npx cap copy android
+            # FORCE : On écrase manuellement l'icône de base par la tienne partout
+            find android/app/src/main/res/ -name "ic_launcher.png" -exec cp icon.png {} \;
+            find android/app/src/main/res/ -name "ic_launcher_round.png" -exec cp icon.png {} \;
+            find android/app/src/main/res/ -name "ic_launcher_foreground.png" -exec cp icon.png {} \;
           fi
 
       - name: Force GPS Permissions
