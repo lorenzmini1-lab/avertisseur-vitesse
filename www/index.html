@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Avertisseur Intelligent</title>
+    <title>Avertisseur Complet</title>
     <style>
         body { 
             margin: 0; padding: 0; display: flex; flex-direction: column; 
@@ -17,7 +17,8 @@
         .unite { font-size: 5vh; opacity: 0.8; }
         #statut-bar { 
             position: absolute; bottom: 0; width: 100%; 
-            background: rgba(0, 0, 0, 0.7); padding: 10px 0; font-size: 0.8rem; 
+            background: rgba(0, 0, 0, 0.8); padding: 12px 0; font-size: 0.85rem;
+            min-height: 20px;
         }
     </style>
 </head>
@@ -29,7 +30,7 @@
     <div class="unite">KM/H</div>
 
     <div id="statut-bar">
-        <span id="txt-statut">Initialisation...</span>
+        <span id="txt-statut">Recherche de votre adresse...</span>
     </div>
 
     <script>
@@ -40,11 +41,27 @@
         let lastLat = 0;
         let lastLon = 0;
 
-        // Fonction pour chercher la limite de vitesse sur OpenStreetMap
+        // Fonction pour trouver l'adresse (Rue + Ville)
+        async function getAddress(lat, lon) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                const data = await response.json();
+                if (data.display_name) {
+                    // On simplifie pour n'afficher que la rue et la ville
+                    const addr = data.address;
+                    const rue = addr.road || addr.pedestrian || "";
+                    const ville = addr.city || addr.town || addr.village || "";
+                    statutEl.innerText = (rue && ville) ? `${rue}, ${ville}` : data.display_name;
+                }
+            } catch (e) {
+                statutEl.innerText = "Adresse indisponible";
+            }
+        }
+
+        // Fonction pour la limite de vitesse
         async function getSpeedLimit(lat, lon) {
             const query = `[out:json];way(around:30,${lat},${lon})[maxspeed];out tags;`;
             const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
-            
             try {
                 const response = await fetch(url);
                 const data = await response.json();
@@ -53,9 +70,7 @@
                     zoneEl.innerText = limit;
                     return parseInt(limit);
                 }
-            } catch (e) {
-                console.log("Erreur Overpass");
-            }
+            } catch (e) {}
             return null;
         }
 
@@ -66,29 +81,26 @@
                 const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
                 
                 vitesseEl.innerText = speed;
-                statutEl.innerText = "GPS OK | Lat: " + lat.toFixed(4);
 
-                // On ne questionne le serveur que si on a bougé de plus de 20 mètres
-                const distance = Math.sqrt(Math.pow(lat - lastLat, 2) + Math.pow(lon - lastLon, 2));
-                if (distance > 0.0002) {
-                    const limit = await getSpeedLimit(lat, lon);
+                // On ne met à jour l'adresse et la zone que si on a bougé de plus de 20m
+                const dist = Math.sqrt(Math.pow(lat - lastLat, 2) + Math.pow(lon - lastLon, 2));
+                if (dist > 0.0002) {
                     lastLat = lat;
                     lastLon = lon;
+                    getAddress(lat, lon);
+                    const limit = await getSpeedLimit(lat, lon);
 
-                    // Alerte visuelle : fond rouge si excès de vitesse
+                    // Alerte visuelle
                     if (limit && speed > limit) {
-                        document.body.style.backgroundColor = "#c0392b"; // Rouge
+                        document.body.style.backgroundColor = "#c0392b";
                     } else {
-                        document.body.style.backgroundColor = "#2c3e50"; // Bleu nuit
+                        document.body.style.backgroundColor = "#2c3e50";
                     }
                 }
 
             }, (err) => {
                 statutEl.innerText = "Erreur GPS : " + err.message;
-            }, { 
-                enableHighAccuracy: true,
-                maximumAge: 0 
-            });
+            }, { enableHighAccuracy: true });
         }
 
         window.onload = startTracking;
