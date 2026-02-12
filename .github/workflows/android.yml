@@ -1,4 +1,3 @@
-
 name: Build Android APK
 
 on:
@@ -18,16 +17,26 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Install Dependencies
+      run: |
+        npm install
+        npm install @capacitor/core @capacitor/cli @capacitor/android
 
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug
+    - name: Rebuild Android Project from scratch
+      run: |
+        rm -rf android
+        npx cap add android
+        npx cap sync android
+
+    - name: Build APK
+      run: |
+        cd android
+        chmod +x gradlew
+        ./gradlew assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: My-App-Debug
+        path: android/app/build/outputs/apk/debug/app-debug.apk
