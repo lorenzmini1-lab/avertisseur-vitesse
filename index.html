@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Avertisseur Zone</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <style>
+        body {
+            margin: 0; padding: 0;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            height: 100vh; background-color: #2c3e50;
+            color: white; font-family: 'Arial Black', sans-serif;
+            transition: background-color 0.5s; overflow: hidden; text-align: center;
+        }
+        .label { font-size: 4vh; opacity: 0.7; text-transform: uppercase; }
+        #zone-valeur { font-size: 35vh; line-height: 0.8; margin: 15px 0; }
+        #vitesse-valeur { font-size: 15vh; color: #f1c40f; line-height: 1; }
+        .unite { font-size: 5vh; opacity: 0.8; }
+        #statut-bar {
+            position: absolute; bottom: 0; width: 100%;
+            background: rgba(0, 0, 0, 0.7); padding: 12px 0; font-size: 0.85rem;
+        }
+        .alerte-vitesse { animation: flash 0.5s infinite alternate; }
+        @keyframes flash {
+            from { background-color: #c0392b; }
+            to { background-color: #e74c3c; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="label">Zone</div>
+    <div id="zone-valeur">--</div>
+    <div id="vitesse-valeur">0</div>
+    <div class="unite">KM/H</div>
+
+    <div id="statut-bar">
+        <span id="txt-statut">Attente GPS...</span><br>
+        <span id="txt-precision">Précision : --</span>
+    </div>
+
+    <script>
+        const zoneEl = document.getElementById('zone-valeur');
+        const vitesseEl = document.getElementById('vitesse-valeur');
+        const statutEl = document.getElementById('txt-statut');
+        const precisionEl = document.getElementById('txt-precision');
+
+        let derniereRequeteTime = 0;
+        let limiteActuelle = 0;
+
+        // --- EMPECHER LA MISE EN VEILLE ---
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen').catch(() => {});
+        }
+
+        // --- ENREGISTRER LE SERVICE WORKER POUR L'INSTALLATION ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
+        async function fetchOSMSpeed(lat, lon) {
+            const now = Date.now();
+            if (now - derniereRequeteTime < 6000) return;
+            derniereRequeteTime = now;
+
+            const d = 0.0004; 
+            const query = `[out:json][timeout:15];way["highway"](${lat-d},${lon-d},${lat+d},${lon+d});out tags;`;
+            const url = "https://overpass.openstreetmap.fr/api/interpreter?data=" + encodeURIComponent(query);
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.elements && data.elements.length > 0) {
+                    const way = data.elements.find(e => e.tags.maxspeed) || data.elements[0];
+                    limiteActuelle = way.tags.maxspeed ? parseInt(way.tags.maxspeed) : 50;
+                    updateDisplay(limiteActuelle);
+                    statutEl.innerText = "Route : " + (way.tags.name || "Identifiée");
+                }
+            } catch (e) {
+                statutEl.innerText = "Erreur API OSM";
+            }
+        }
+
+        function updateDisplay(limite) {
+            zoneEl.innerText = limite;
+            if (limite <= 30) document.body.style.backgroundColor = "#d35400";
+            else if (limite <= 50) document.body.style.backgroundColor = "#2c3e50";
+            else document.body.style.backgroundColor = "#27ae60";
+        }
+
+        navigator.geolocation.watchPosition((pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+            vitesseEl.innerText = speed;
+            precisionEl.innerText = `Précision : +/- ${Math.round(pos.coords.accuracy)}m`;
+            
+            if (limiteActuelle > 0 && speed > limiteActuelle) document.body.classList.add('alerte-vitesse');
+            else document.body.classList.remove('alerte-vitesse');
+
+            fetchOSMSpeed(lat, lon);
+        }, (err) => {
+            statutEl.innerText = "Erreur GPS : " + err.message;
+        }, { enableHighAccuracy: true });
+    </script>
+</body>
+</html>
