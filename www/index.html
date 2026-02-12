@@ -1,32 +1,41 @@
-<script>
-    const zoneEl = document.getElementById('zone-valeur');
-    const vitesseEl = document.getElementById('vitesse-valeur');
-    const statutEl = document.getElementById('txt-statut');
-    const precisionEl = document.getElementById('txt-precision');
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Avertisseur Zone</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; background-color: #2c3e50; color: white; font-family: 'Arial Black', sans-serif; transition: background-color 0.5s; overflow: hidden; text-align: center; }
+        .label { font-size: 4vh; opacity: 0.7; text-transform: uppercase; }
+        #zone-valeur { font-size: 35vh; line-height: 0.8; margin: 15px 0; }
+        #vitesse-valeur { font-size: 15vh; color: #f1c40f; line-height: 1; }
+        .unite { font-size: 5vh; opacity: 0.8; }
+        #statut-bar { position: absolute; bottom: 0; width: 100%; background: rgba(0, 0, 0, 0.7); padding: 12px 0; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="label">Zone</div>
+    <div id="zone-valeur">--</div>
+    <div id="vitesse-valeur">0</div>
+    <div class="unite">KM/H</div>
+    <div id="statut-bar"><span id="txt-statut">Attente GPS...</span></div>
 
-    // Forcer la demande au chargement
-    window.onload = () => {
-        statutEl.innerText = "Initialisation GPS...";
-        
-        navigator.geolocation.watchPosition((pos) => {
-            const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
-            vitesseEl.innerText = speed;
-            statutEl.innerText = "GPS Connecté";
-            precisionEl.innerText = `Précision : +/- ${Math.round(pos.coords.accuracy)}m`;
-            
-            // Appel OSM (ton ancienne fonction fetchOSMSpeed ici)
-            fetchOSMSpeed(pos.coords.latitude, pos.coords.longitude);
-            
-        }, (err) => {
-            // C'est ici que le message d'erreur s'affiche si c'est refusé
-            statutEl.innerText = "ERREUR : Allez dans Paramètres > Applications pour autoriser la Position.";
-            console.error(err);
-        }, { 
-            enableHighAccuracy: true, 
-            timeout: 10000, 
-            maximumAge: 0 
-        });
-    };
+    <script>
+        const zoneEl = document.getElementById('zone-valeur');
+        const vitesseEl = document.getElementById('vitesse-valeur');
+        const statutEl = document.getElementById('txt-statut');
 
-    // Remets ici tes fonctions fetchOSMSpeed et updateDisplay...
-</script>
+        function initGPS() {
+            navigator.geolocation.watchPosition((pos) => {
+                const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+                vitesseEl.innerText = speed;
+                statutEl.innerText = "GPS Connecté";
+            }, (err) => {
+                statutEl.innerText = "Erreur : Autorisez la position dans les réglages";
+            }, { enableHighAccuracy: true });
+        }
+
+        window.onload = initGPS;
+    </script>
+</body>
+</html>
