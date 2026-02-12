@@ -51,14 +51,38 @@
         let derniereRequeteTime = 0;
         let limiteActuelle = 0;
 
+        // --- NOUVEAU : FORCER LA DEMANDE DE PERMISSION ---
+        function initGPS() {
+            statutEl.innerText = "Demande d'accès GPS...";
+            
+            navigator.geolocation.getCurrentPosition((pos) => {
+                statutEl.innerText = "GPS Activé !";
+                lancerSuiviVitesse(); // On lance le suivi une fois la permission ok
+            }, (err) => {
+                statutEl.innerText = "Erreur GPS : " + err.message + " (Vérifiez les réglages)";
+            }, { enableHighAccuracy: true });
+        }
+
+        function lancerSuiviVitesse() {
+            navigator.geolocation.watchPosition((pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+                vitesseEl.innerText = speed;
+                precisionEl.innerText = `Précision : +/- ${Math.round(pos.coords.accuracy)}m`;
+                
+                if (limiteActuelle > 0 && speed > limiteActuelle) document.body.classList.add('alerte-vitesse');
+                else document.body.classList.remove('alerte-vitesse');
+
+                fetchOSMSpeed(lat, lon);
+            }, (err) => {
+                statutEl.innerText = "Perte du signal GPS";
+            }, { enableHighAccuracy: true });
+        }
+
         // --- EMPECHER LA MISE EN VEILLE ---
         if ('wakeLock' in navigator) {
             navigator.wakeLock.request('screen').catch(() => {});
-        }
-
-        // --- ENREGISTRER LE SERVICE WORKER POUR L'INSTALLATION ---
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
         }
 
         async function fetchOSMSpeed(lat, lon) {
@@ -91,20 +115,8 @@
             else document.body.style.backgroundColor = "#27ae60";
         }
 
-        navigator.geolocation.watchPosition((pos) => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
-            vitesseEl.innerText = speed;
-            precisionEl.innerText = `Précision : +/- ${Math.round(pos.coords.accuracy)}m`;
-            
-            if (limiteActuelle > 0 && speed > limiteActuelle) document.body.classList.add('alerte-vitesse');
-            else document.body.classList.remove('alerte-vitesse');
-
-            fetchOSMSpeed(lat, lon);
-        }, (err) => {
-            statutEl.innerText = "Erreur GPS : " + err.message;
-        }, { enableHighAccuracy: true });
+        // Lancement au démarrage
+        window.onload = initGPS;
     </script>
 </body>
 </html>
