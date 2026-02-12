@@ -23,7 +23,7 @@ jobs:
         npm install
         npm install @capacitor/core @capacitor/cli @capacitor/android
 
-    - name: Rebuild Android Project from scratch
+    - name: Rebuild Android Project
       run: |
         rm -rf android
         npx cap add android
@@ -38,5 +38,5 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: My-App-Debug
+        name: Mon-Application-Debug
         path: android/app/build/outputs/apk/debug/app-debug.apk
