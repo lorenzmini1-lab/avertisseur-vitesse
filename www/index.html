@@ -3,34 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Avertisseur Zone</title>
+    <title>Avertisseur Intelligent</title>
     <style>
         body { 
-            margin: 0; 
-            padding: 0; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            background-color: #2c3e50; 
-            color: white; 
-            font-family: 'Arial Black', sans-serif; 
-            transition: background-color 0.5s; 
-            overflow: hidden; 
-            text-align: center; 
+            margin: 0; padding: 0; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; height: 100vh; 
+            background-color: #2c3e50; color: white; font-family: 'Arial Black', sans-serif; 
+            transition: background-color 0.5s; overflow: hidden; text-align: center; 
         }
         .label { font-size: 4vh; opacity: 0.7; text-transform: uppercase; }
         #zone-valeur { font-size: 30vh; line-height: 0.8; margin: 10px 0; }
         #vitesse-valeur { font-size: 15vh; color: #f1c40f; line-height: 1; }
         .unite { font-size: 5vh; opacity: 0.8; }
         #statut-bar { 
-            position: absolute; 
-            bottom: 0; 
-            width: 100%; 
-            background: rgba(0, 0, 0, 0.7); 
-            padding: 10px 0; 
-            font-size: 0.9rem; 
+            position: absolute; bottom: 0; width: 100%; 
+            background: rgba(0, 0, 0, 0.7); padding: 10px 0; font-size: 0.8rem; 
         }
     </style>
 </head>
@@ -42,7 +29,7 @@
     <div class="unite">KM/H</div>
 
     <div id="statut-bar">
-        <span id="txt-statut">Recherche GPS...</span>
+        <span id="txt-statut">Initialisation...</span>
     </div>
 
     <script>
@@ -50,22 +37,54 @@
         const vitesseEl = document.getElementById('vitesse-valeur');
         const statutEl = document.getElementById('txt-statut');
 
+        let lastLat = 0;
+        let lastLon = 0;
+
+        // Fonction pour chercher la limite de vitesse sur OpenStreetMap
+        async function getSpeedLimit(lat, lon) {
+            const query = `[out:json];way(around:30,${lat},${lon})[maxspeed];out tags;`;
+            const url = "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.elements && data.elements.length > 0) {
+                    const limit = data.elements[0].tags.maxspeed;
+                    zoneEl.innerText = limit;
+                    return parseInt(limit);
+                }
+            } catch (e) {
+                console.log("Erreur Overpass");
+            }
+            return null;
+        }
+
         function startTracking() {
-            // On utilise la même méthode qui a fonctionné tout à l'heure
-            navigator.geolocation.watchPosition((pos) => {
+            navigator.geolocation.watchPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
                 const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
                 
-                // Mise à jour de la vitesse
                 vitesseEl.innerText = speed;
-                
-                // Simulation de la zone (on pourra remettre l'API OSM plus tard)
-                zoneEl.innerText = "50"; 
-                
-                statutEl.innerText = "GPS Connecté";
-                statutEl.style.color = "#2ecc71";
+                statutEl.innerText = "GPS OK | Lat: " + lat.toFixed(4);
+
+                // On ne questionne le serveur que si on a bougé de plus de 20 mètres
+                const distance = Math.sqrt(Math.pow(lat - lastLat, 2) + Math.pow(lon - lastLon, 2));
+                if (distance > 0.0002) {
+                    const limit = await getSpeedLimit(lat, lon);
+                    lastLat = lat;
+                    lastLon = lon;
+
+                    // Alerte visuelle : fond rouge si excès de vitesse
+                    if (limit && speed > limit) {
+                        document.body.style.backgroundColor = "#c0392b"; // Rouge
+                    } else {
+                        document.body.style.backgroundColor = "#2c3e50"; // Bleu nuit
+                    }
+                }
+
             }, (err) => {
                 statutEl.innerText = "Erreur GPS : " + err.message;
-                statutEl.style.color = "#e74c3c";
             }, { 
                 enableHighAccuracy: true,
                 maximumAge: 0 
