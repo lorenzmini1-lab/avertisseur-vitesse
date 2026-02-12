@@ -13,12 +13,21 @@ jobs:
           distribution: 'temurin'
           
       - name: Install Dependencies
-        run: npm install
-        
+        run: |
+          npm install
+          npm install @capacitor/assets -g
+
       - name: Initialize Capacitor Android
         run: |
           npx cap add android
           npx cap sync android
+
+      - name: Generate Icons
+        run: |
+          # Cette ligne transforme ton icon.png en icônes Android
+          if [ -f "icon.png" ]; then
+            npx @capacitor/assets generate --android
+          fi
 
       - name: Force GPS Permissions
         run: |
