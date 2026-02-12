@@ -1,6 +1,6 @@
 {
   "appId": "com.avertisseur.vitesse",
   "appName": "Avertisseur de Vitesse",
-  "webDir": "www",
+  "webDir": "./",
   "bundledWebRuntime": false
 }
