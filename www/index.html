@@ -80,7 +80,7 @@
                 vitesseEl.innerText = speed;
 
                 const now = Date.now();
-                if (now - lastUpdate > 8000) { 
+                if (now - lastUpdate > 5000) { 
                     lastUpdate = now;
                     updateData(lat, lon, speed);
                 }
