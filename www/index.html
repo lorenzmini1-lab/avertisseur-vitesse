@@ -11,7 +11,12 @@
             background-color: #2c3e50; color: white; font-family: 'Arial Black', sans-serif; 
             transition: background-color 0.5s; overflow: hidden; text-align: center; 
         }
-        .label { font-size: 4vh; opacity: 0.7; text-transform: uppercase; }
+        /* Style de l'horloge ajouté */
+        #horloge { 
+            position: absolute; top: 3vh; font-size: 5vh; 
+            opacity: 0.9; font-family: monospace; font-weight: bold;
+        }
+        .label { font-size: 4vh; opacity: 0.7; text-transform: uppercase; margin-top: 5vh; }
         #zone-valeur { font-size: 25vh; line-height: 0.8; margin: 10px 0; }
         #vitesse-valeur { font-size: 15vh; color: #f1c40f; line-height: 1; }
         .unite { font-size: 5vh; opacity: 0.8; }
@@ -22,8 +27,11 @@
     </style>
 </head>
 <body>
+    <div id="horloge">00:00:00</div>
+
     <div class="label">Zone</div>
-    <div id="zone-valeur">50</div> <div id="vitesse-valeur">0</div>
+    <div id="zone-valeur">50</div> 
+    <div id="vitesse-valeur">0</div>
     <div class="unite">KM/H</div>
 
     <div id="statut-bar">
@@ -34,18 +42,24 @@
         const zoneEl = document.getElementById('zone-valeur');
         const vitesseEl = document.getElementById('vitesse-valeur');
         const statutEl = document.getElementById('txt-statut');
+        const horlogeEl = document.getElementById('horloge');
         let lastUpdate = 0;
 
+        // Mise à jour de l'heure
+        function updateClock() {
+            const now = new Date();
+            horlogeEl.innerText = now.toLocaleTimeString('fr-FR', { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+
         async function updateData(lat, lon, currentSpeed) {
-            // Mise à jour adresse
             try {
                 const resAddr = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                 const dataAddr = await resAddr.json();
                 const addr = dataAddr.address;
-                statutEl.innerText = `${addr.road || "Route"}, ${addr.city || addr.town || "Tubize"}`;
+                statutEl.innerText = `${addr.road || "Route"}, ${addr.city || addr.town || "Localisation..."}`;
             } catch(e) {}
 
-            // Mise à jour Zone (Overpass)
             try {
                 const query = `[out:json];way(around:50,${lat},${lon})[maxspeed];out tags;`;
                 const res = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query));
@@ -53,19 +67,14 @@
                 
                 if (data.elements && data.elements.length > 0) {
                     let speedLimit = parseInt(data.elements[0].tags.maxspeed);
-                    
-                    // FILTRE DE SÉCURITÉ : Si la vitesse est farfelue (comme 160), on reste sur 50 ou 120 max
-                    if (isNaN(speedLimit) || speedLimit > 130) {
-                        speedLimit = 50; 
-                    }
+                    if (isNaN(speedLimit) || speedLimit > 130) speedLimit = 50; 
                     
                     zoneEl.innerText = speedLimit;
 
-                    // Alerte couleur
                     if (currentSpeed > speedLimit) {
-                        document.body.style.backgroundColor = "#c0392b"; // Rouge
+                        document.body.style.backgroundColor = "#c0392b"; 
                     } else {
-                        document.body.style.backgroundColor = "#2c3e50"; // Bleu
+                        document.body.style.backgroundColor = "#2c3e50"; 
                     }
                 }
             } catch(e) {}
@@ -80,6 +89,7 @@
                 vitesseEl.innerText = speed;
 
                 const now = Date.now();
+                // Changement ici : Mise à jour toutes les 5 secondes (5000ms)
                 if (now - lastUpdate > 5000) { 
                     lastUpdate = now;
                     updateData(lat, lon, speed);
@@ -89,7 +99,10 @@
             }, { enableHighAccuracy: true });
         }
 
-        window.onload = startTracking;
+        window.onload = () => {
+            updateClock();
+            startTracking();
+        };
     </script>
 </body>
 </html>
